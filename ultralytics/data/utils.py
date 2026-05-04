@@ -54,6 +54,8 @@ def img2label_paths(img_paths, data=None):
             # return filenames in label_dir
             label_paths = [str(Path(label_dir) / Path(x).name).replace("images", "labels").replace(".jpg", ".txt") for x in img_paths]
             print(label_paths[:5])
+            # remove paths that do not exist
+            label_paths = [x for x in label_paths if os.path.exists(x)]
             return label_paths
 
         except Exception as e:

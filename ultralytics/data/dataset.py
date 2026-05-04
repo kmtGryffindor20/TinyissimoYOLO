@@ -112,12 +112,20 @@ class YOLODataset(BaseDataset):
         """Returns dictionary of labels for YOLO training."""
         self.label_files = img2label_paths(self.im_files, self.data)  # get labels
         cache_path = Path(self.label_files[0]).parent.with_suffix(".cache")
+        img_parent = Path(self.im_files[0]).parent
+        imgs = []
+        for lbf in self.label_files:
+          fn = Path(lbf).name
+          img = img_parent / fn.replace(".txt", ".jpg")
+          imgs.append(img.as_posix())
+        self.im_files = imgs
         print(f"Scanning {cache_path} for label files...")  # check cache
         try:
             cache, exists = load_dataset_cache_file(cache_path), True  # attempt to load a *.cache file
             assert cache["version"] == DATASET_CACHE_VERSION  # matches current version
             assert cache["hash"] == get_hash(self.label_files + self.im_files)  # identical hash
-        except (FileNotFoundError, AssertionError, AttributeError):
+        except (FileNotFoundError, AssertionError, AttributeError) as e:
+            print(e)
             cache, exists = self.cache_labels(cache_path), False  # run cache ops
 
         # Display cache
