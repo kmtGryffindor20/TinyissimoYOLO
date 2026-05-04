@@ -1,4 +1,4 @@
-# TINYISSIMO YOLO V1
+# TINYISSIMO YOLO DS V1
 
 # Parameters
 nc: 1  # number of classes
@@ -7,19 +7,19 @@ backbone:
   # [from, number, module, args]
   [[-1, 1, Conv, [16, 3, 1]],  # 0
    [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 3-P2/4
-   [-1, 1, Conv, [16, 3, 1]],
-   [-1, 1, Conv, [16, 3, 1]],  # 0
+   [-1, 1, DSConv, [16, 3, 1]],
+   [-1, 1, DSConv, [16, 3, 1]],  # 0
    [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 3-P2/4
-   [-1, 1, Conv, [32, 3, 1]],
-   [-1, 1, Conv, [32, 3, 1]],  # 0
+   [-1, 1, DSConv, [32, 3, 1]],
+   [-1, 1, DSConv, [32, 3, 1]],  # 0
    [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 3-P2/4
-   [-1, 1, Conv, [64, 3, 1]],
-   [-1, 1, Conv, [64, 3, 1]],  # 0
+   [-1, 1, DSConv, [64, 3, 1]],
+   [-1, 1, DSConv, [64, 3, 1]],  # 0
    [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 3-P2/4
-   [-1, 1, Conv, [64, 3, 1]],
-   [-1, 1, Conv, [128, 3, 1]],  # 0
+   [-1, 1, DSConv, [64, 3, 1]],
+   [-1, 1, DSConv, [128, 3, 1]],  # 0
    [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 3-P2/4
-   [-1, 1, Conv, [128, 3, 1]],
+   [-1, 1, DSConv, [128, 3, 1]],
   ]
 
 head: 

@@ -1,0 +1,56 @@
+# TinyissimoYOLO — DS-Inception Backbone
+# =========================================
+# Requires custom_modules.py to be imported first.
+#
+# Architecture
+# -------------
+# 5 DSInceptionBlock stages replace the 5 plain DSBlock stages.
+# Each DSInceptionBlock runs 4 parallel branches:
+#   B1: 1×1 conv
+#   B2: 1×1 bottleneck → DS 3×3
+#   B3: 1×1 bottleneck → DS 3×3 → DS 3×3   (≈5×5 receptive field)
+#   B4: MaxPool(3×3, s=1) → 1×1 projection
+# then MaxPool(2×2) for spatial downsampling.
+#
+# Output channels = c_b1 + c_b2 + c_b3 + c_b4
+# Channel schedule matches TinyissimoYOLO-DS exactly at each stage.
+
+# Skip Connections
+#
+#
+# Training resolution: 128×128
+
+nc: 1
+
+backbone:
+  # Block 1: 3 → 16ch,  256→128
+  - [-1, 1, Conv, [16, 3, 1]]     # 0  16ch
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]] # 1
+  # Block 2: 16 → 32ch, 128→64
+  - [-1, 1, Conv, [16, 3, 1]]     # 2  16ch
+  - [-1, 1, Conv, [16, 3, 1]]     # 3  16ch
+  - [[3, 1], 1, Add, []]                # 4  skip from layer 1
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]        # 5
+  # Block 3: 32 → 64ch,  64→32
+  - [-1, 1, Conv, [32, 3, 1]]     # 6  32ch
+  - [-1, 1, Conv, [32, 3, 1]]     # 7  32ch
+  # Add skip connection from layer 1 output (16ch) to layer 4 output (32ch) before downsampling
+  - [5, 1, Conv, [32, 1, 1]]          # 8  projection: 16→32 channels for skip
+  - [[7, 8], 1, Add, []]                # 9  skip from layer 3
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]       # 10
+  # Block 4: 64 → 64ch,  32→16  + CBAM
+  - [-1, 1, DSInception, [16, 16, 16, 16, 0.5 ]]  # 11  64ch
+  - [-1, 1, DSInception, [8, 24, 24, 8, 0.5 ]]    # 12  64ch
+    # Add skip connection from layer 3 output (32ch) to layer 7 output (64ch) before downsampling
+  - [10, 1, Conv, [64, 1, 1]]          # 13  projection: 32→64 channels for skip
+  - [[12, 13], 1, Add, []]               # 14  skip from layer 6
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]      # 15
+  # Block 5: 64 → 128ch, 16→8   + CBAM
+  - [-1, 1, DSInception, [32, 32, 32, 32, 0.5 ]]  # 16  128ch
+  - [-1, 1, DSInception, [16, 48, 48, 16, 0.5 ]] # 17  128ch
+  - [-1, 1, DSInception, [4, 60, 60, 4, 0.5 ]]   # 18  128ch
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]
+  - [-1, 1, DSConv, [128, 3, 1]]     # 19  128ch
+head:
+  - [-1, 1, Conv,   [24, 1, 1]]    # 20  neck 128→256
+  - [[-1], 1, Detect, [nc]]      # 21  detect on layer 6 (8×8 grid)

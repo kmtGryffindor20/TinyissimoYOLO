@@ -19,7 +19,9 @@ except (ImportError, AssertionError):
     wb = None
 
 
-def _custom_table(x, y, classes, title="Precision Recall Curve", x_title="Recall", y_title="Precision"):
+def _custom_table(
+    x, y, classes, title="Precision Recall Curve", x_title="Recall", y_title="Precision"
+):
     """
     Create and log a custom metric visualization to wandb.plot.pr_curve.
 
@@ -42,7 +44,10 @@ def _custom_table(x, y, classes, title="Precision Recall Curve", x_title="Recall
     fields = {"x": "x", "y": "y", "class": "class"}
     string_fields = {"title": title, "x-axis-title": x_title, "y-axis-title": y_title}
     return wb.plot_table(
-        "wandb/area-under-curve/v0", wb.Table(dataframe=df), fields=fields, string_fields=string_fields
+        "wandb/area-under-curve/v0",
+        wb.Table(dataframe=df),
+        fields=fields,
+        string_fields=string_fields,
     )
 
 
@@ -95,7 +100,10 @@ def _plot_curve(
             x_log.extend(x_new)  # add new x
             y_log.extend(np.interp(x_new, x, yi))  # interpolate y to new x
             classes.extend([names[i]] * len(x_new))  # add class names
-        wb.log({id: _custom_table(x_log, y_log, classes, title, x_title, y_title)}, commit=False)
+        wb.log(
+            {id: _custom_table(x_log, y_log, classes, title, x_title, y_title)},
+            commit=False,
+        )
 
 
 def _log_plots(plots, step):
@@ -109,7 +117,17 @@ def _log_plots(plots, step):
 
 def on_pretrain_routine_start(trainer):
     """Initiate and start project if module is present."""
-    wb.run or wb.init(project=trainer.args.project or "YOLOv8", name=trainer.args.name, config=vars(trainer.args))
+    wandb_kwargs = {
+        "project": trainer.args.project or "YOLOv8",
+        "name": trainer.args.name,
+        "config": vars(trainer.args),
+    }
+    wandb_id = getattr(trainer.args, "wandb_id", None)
+    if wandb_id:
+        wandb_kwargs["id"] = wandb_id
+        if trainer.args.resume:
+            wandb_kwargs["resume"] = "allow"
+    wb.run or wb.init(**wandb_kwargs)
 
 
 def on_fit_epoch_end(trainer):
@@ -123,7 +141,9 @@ def on_fit_epoch_end(trainer):
 
 def on_train_epoch_end(trainer):
     """Log metrics and save images at the end of each training epoch."""
-    wb.run.log(trainer.label_loss_items(trainer.tloss, prefix="train"), step=trainer.epoch + 1)
+    wb.run.log(
+        trainer.label_loss_items(trainer.tloss, prefix="train"), step=trainer.epoch + 1
+    )
     wb.run.log(trainer.lr, step=trainer.epoch + 1)
     if trainer.epoch == 1:
         _log_plots(trainer.plots, step=trainer.epoch + 1)
@@ -137,7 +157,9 @@ def on_train_end(trainer):
     if trainer.best.exists():
         art.add_file(trainer.best)
         wb.run.log_artifact(art, aliases=["best"])
-    for curve_name, curve_values in zip(trainer.validator.metrics.curves, trainer.validator.metrics.curves_results):
+    for curve_name, curve_values in zip(
+        trainer.validator.metrics.curves, trainer.validator.metrics.curves_results
+    ):
         x, y, x_title, y_title = curve_values
         _plot_curve(
             x,

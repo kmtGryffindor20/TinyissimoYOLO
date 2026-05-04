@@ -1,0 +1,26 @@
+# tinyissimo_ds_resnet.yaml  (memory optimised)
+nc: 1
+
+backbone:
+  # Stem — narrow to keep first feature map small
+  - [-1, 1, Conv,         [8, 3, 1]]           # 0  3→8ch,   256×256
+
+  # Stages 1-2: plain DS, no residual skip (avoids double-buffer at large dims)
+  - [-1, 1, DSBlock,        [16, 8]]              # 1  8→16ch,  256→128  peak≈262KB
+  - [-1, 1, DSBlock,        [32, 16]]             # 2  16→32ch, 128→64   peak≈262KB
+
+  # Stage 3: first residual stage (64×64 is small enough)
+  - [-1, 1, DSResDownBlock, [64]]                 # 3  32→64ch, 64→32    peak≈392KB
+  - [-1, 1, DSResBlock,     []]                   # 4  identity 64ch]
+
+  # Stage 4: deeper residual stage
+  - [-1, 1, DSResDownBlock, [128]]                # 6  64→128ch, 32→16   peak≈196KB
+  - [-1, 1, DSResBlock,     []]                   # 7
+  - [-1, 1, DSResBlock,     []]                   # 8
+
+  # Final pool to 8×8 for Detect
+  - [-1, 1, nn.MaxPool2d,   [2, 2]]               # 10  128ch, 8×8
+
+head:
+  - [-1, 1, Conv,   [64, 1, 1]]                   # 11  neck 128→64
+  - [-1, 1, Detect, [nc, [10]]]                   # 12

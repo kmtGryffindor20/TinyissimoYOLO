@@ -1,0 +1,7 @@
+# person.yaml
+path: ./coco-2017
+train: train/images
+val:   val/images
+
+nc: 1
+names: ["person"]

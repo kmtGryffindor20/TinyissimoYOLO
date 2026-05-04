@@ -1,0 +1,48 @@
+nc: 1
+
+backbone:
+  # ── Block 1 ────────────────────────────────────────────────────────
+  # Reduce 16→12 channels. 12 is make_divisible(12, 4).
+  # Cuts peak activation at 128×128 from 262KB to 196KB (-25%).
+  # Accuracy impact: minimal — early RGB features are low-rank anyway.
+  - [-1, 1, Conv,         [12, 3, 1]]          # 0  was 16ch → now 12ch
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]           # 1  12ch, 64×64
+
+  # ── Block 2 ────────────────────────────────────────────────────────
+  # Keep Conv (not DS) — you confirmed Conv here is needed for accuracy.
+  # Keep the skip — it helps convergence and costs only 48KB at 12ch×64×64.
+  - [-1, 1, Conv,         [16, 3, 1]]          # 2  12→16ch
+  - [-1, 1, Conv,         [16, 3, 1]]          # 3  16ch
+  - [1, 1, Conv,         [16, 1, 1]]          # 4  projection 12→16 for skip
+  - [[3, 4], 1, Add,      []]                  # 5  skip from layer 1
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]           # 6  16ch, 32×32
+
+  # ── Block 3 ────────────────────────────────────────────────────────
+  - [-1, 1, Conv,         [32, 3, 1]]          # 7
+  - [-1, 1, Conv,         [32, 3, 1]]          # 8
+  - [5,  1, Conv,         [32, 1, 1]]          # 9  projection 16→32
+  - [[8, 9], 1, Add,      []]                  # 10  skip — 16KB held
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]           # 11  32ch, 16×16
+
+  # ── Block 4 ────────────────────────────────────────────────────────
+  - [-1, 1, DSInception,  [16, 16, 16, 16, 0.5]]   # 12  64ch
+  - [-1, 1, DSInception,  [8, 24, 24, 8, 0.5]]     # 13  64ch
+  - [11, 1, Conv,         [64, 1, 1]]               # 14  projection 32→64
+  - [[13, 14], 1, Add,    []]                        # 15  skip — 8KB held
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]                # 16   8×8
+
+  # ── Block 5 ────────────────────────────────────────────────────────
+  # Remove the 3rd DSInception [4, 60, 60, 4].
+  # That module adds 128 channels via B2+B3 (60+60) which is mostly
+  # redundant — Block 5 already has two inception passes before it.
+  # Saves: one full inception pass at 8×8 (cheap spatially but still
+  # 4 branch computations + Concat).
+  - [-1, 1, DSInception,  [32, 32, 32, 32, 0.5]]   # 17  128ch
+  - [-1, 1, DSInception,  [16, 48, 48, 16, 0.5]]   # 18  128ch  ← stop here
+  # REMOVED: DSInception [4, 60, 60, 4]
+  - [-1, 1, nn.MaxPool2d, [2, 2, 0]]                # 19   4×4
+  - [-1, 1, DSConv,       [128, 3, 1]]              # 20  128ch
+
+head:
+  - [-1, 1, Conv,         [24, 1, 1]]               # 21
+  - [[-1], 1, Detect,     [nc]]                     # 22

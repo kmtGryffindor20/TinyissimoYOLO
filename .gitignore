@@ -175,3 +175,13 @@ results/
 wandb/
 
 .DS_Store
+
+
+dataset/
+*.csv
+*.json
+nas_runs/
+runs/
+best_arch/
+inc/
+zs_verify/
