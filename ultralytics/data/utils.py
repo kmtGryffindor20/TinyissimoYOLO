@@ -40,8 +40,25 @@ VID_FORMATS = "asf", "avi", "gif", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "t
 PIN_MEMORY = str(os.getenv("PIN_MEMORY", True)).lower() == "true"  # global pin_memory for dataloaders
 
 
-def img2label_paths(img_paths):
+def img2label_paths(img_paths, data=None):
     """Define label paths as a function of image paths."""
+    if data is not None:
+        try:
+            if 'train' in img_paths[0]:
+                label_dir = data['train_labels']
+            elif 'val' in img_paths[0]:
+                label_dir = data['val_labels']
+            else:
+                raise ValueError(f"img2label_paths: unable to determine label directory for {img_paths[0]}")
+            
+            # return filenames in label_dir
+            label_paths = [str(Path(label_dir) / Path(x).name).replace("images", "labels").replace(".jpg", ".txt") for x in img_paths]
+            print(label_paths[:5])
+            return label_paths
+
+        except Exception as e:
+            pass
+            
     sa, sb = f"{os.sep}images{os.sep}", f"{os.sep}labels{os.sep}"  # /images/, /labels/ substrings
     return [sb.join(x.rsplit(sa, 1)).rsplit(".", 1)[0] + ".txt" for x in img_paths]
 
